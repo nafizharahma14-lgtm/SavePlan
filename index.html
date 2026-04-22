@@ -1,0 +1,308 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>SavePlan</title>
+
+<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;600&family=Fredoka:wght@500&display=swap" rel="stylesheet">
+
+<style>
+
+body {
+  margin: 0;
+  font-family: 'Poppins', sans-serif;
+  background: linear-gradient(135deg,#dfe9f3,#ffffff);
+}
+
+/* SPLASH */
+#splash {
+  position: fixed;
+  width: 100%;
+  height: 100vh;
+  background: linear-gradient(135deg,#a8edea,#fed6e3);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  flex-direction: column;
+  color: #444;
+  z-index: 9999;
+  transition: 0.5s;
+}
+
+.logo {
+  font-size: 60px;
+  animation: naik 1s infinite alternate;
+}
+
+@keyframes naik {
+  from {transform: translateY(0);}
+  to {transform: translateY(-10px);}
+}
+
+/* APP */
+.app {
+  display: none;
+  padding: 15px;
+}
+
+.card {
+  background: #ffffff;
+  padding: 15px;
+  border-radius: 20px;
+  margin-bottom: 15px;
+  box-shadow: 0 6px 15px rgba(0,0,0,0.05);
+}
+
+.title {
+  font-family: 'Fredoka', cursive;
+  color: #6c8cff;
+}
+
+input {
+  width: 100%;
+  padding: 10px;
+  margin: 6px 0;
+  border-radius: 12px;
+  border: none;
+  background: #f5f7fb;
+}
+
+button {
+  width: 100%;
+  padding: 10px;
+  border: none;
+  border-radius: 12px;
+  color: white;
+  font-weight: bold;
+}
+
+/* WARNA SOFT */
+.simpan {background:#7aa7ff;}
+.nabung {background:#6fdc8c;}
+.keluar {background:#ff8a8a;}
+
+#progressText {
+  margin: 10px 0;
+  text-align: center;
+  font-weight: bold;
+  color: #555;
+}
+
+.progress {
+  height: 12px;
+  background: #e9edf5;
+  border-radius: 10px;
+  margin-bottom: 15px;
+}
+
+.fill {
+  height: 100%;
+  background: linear-gradient(to right,#6fdc8c,#b8f1c7);
+  width: 0%;
+  border-radius: 10px;
+}
+
+.history {
+  max-height: 120px;
+  overflow-y: auto;
+}
+
+.plus {color: #4caf50;}
+.minus {color: #e57373;}
+
+.motivasi {
+  background: linear-gradient(135deg,#fdfbfb,#ebedee);
+  padding: 10px;
+  border-radius: 15px;
+  font-family: 'Fredoka', cursive;
+  color: #555;
+}
+</style>
+</style>
+</head>
+
+<body>
+
+<!-- SPLASH -->
+<div id="splash">
+  <div class="logo">💰✨</div>
+  <h1>SavePlan</h1>
+  <p>Nabung terarah,<br>tujuan jadi nyata.</p>
+</div>
+
+<!-- APP -->
+<div class="app" id="app">
+
+<div class="card">
+  <h3 class="title">🎯 Target</h3>
+  <input id="nama" placeholder="Contoh: Laptop">
+  <input id="target" placeholder="Harga target">
+  <input id="harian" placeholder="Nabung per hari">
+  <button class="simpan" onclick="simpan()">Simpan</button>
+</div>
+
+<div class="card">
+  <h3 id="barang"></h3>
+  <p id="estimasi"></p>
+  <h2 id="tabungan">Rp 0</h2>
+
+  <div id="progressText">0%</div>
+
+  <div class="progress">
+    <div id="fill" class="fill"></div>
+  </div>
+
+  <button class="nabung" onclick="nabung()">+ Nabung</button>
+</div>
+
+<div class="card">
+  <h3 class="title">💸 Pengeluaran</h3>
+  <input id="keluarJumlah" placeholder="Jumlah">
+  <input id="keterangan" placeholder="Contoh: beli bakso">
+  <button class="keluar" onclick="keluar()">Catat</button>
+</div>
+
+<div class="card">
+  <h3 class="title">📜 Riwayat</h3>
+  <div id="history" class="history"></div>
+</div>
+
+<div class="card motivasi" id="motivasi"></div>
+
+</div>
+
+<script>
+// SPLASH
+window.onload = function(){
+  setTimeout(()=>{
+    document.getElementById("splash").style.opacity="0";
+    setTimeout(()=>{
+      document.getElementById("splash").style.display="none";
+      document.getElementById("app").style.display="block";
+    },500);
+  },2500);
+};
+
+// FORMAT
+function rp(x){ return "Rp " + x.toLocaleString("id-ID"); }
+function num(x){ return Number(x.replace(/\D/g,'')) || 0; }
+
+// DATA
+let nama = localStorage.getItem("nama") || "";
+let target = Number(localStorage.getItem("target")) || 0;
+let harian = Number(localStorage.getItem("harian")) || 0;
+let tabungan = Number(localStorage.getItem("tabungan")) || 0;
+let history = JSON.parse(localStorage.getItem("history")) || [];
+
+// SIMPAN (RESET OTOMATIS)
+function simpan(){
+  let newNama = document.getElementById("nama").value;
+  let newTarget = num(document.getElementById("target").value);
+  let newHarian = num(document.getElementById("harian").value);
+
+  if(!newNama || newTarget<=0 || newHarian<=0){
+    alert("Isi data!");
+    return;
+  }
+
+  if(newNama !== nama || newTarget !== target){
+    tabungan = 0;
+    history = [];
+  }
+
+  nama = newNama;
+  target = newTarget;
+  harian = newHarian;
+
+  localStorage.setItem("nama",nama);
+  localStorage.setItem("target",target);
+  localStorage.setItem("harian",harian);
+  localStorage.setItem("tabungan",tabungan);
+  localStorage.setItem("history",JSON.stringify(history));
+
+  update();
+}
+
+// NABUNG (STOP JIKA SELESAI)
+function nabung(){
+  if(tabungan >= target){
+    alert("🎉 Target sudah tercapai!");
+    return;
+  }
+
+  tabungan += harian;
+  if(tabungan > target) tabungan = target;
+
+  history.unshift({text:"+ "+rp(harian)+" (nabung)",type:"plus"});
+  save();
+}
+
+// KELUAR
+function keluar(){
+  let j = num(document.getElementById("keluarJumlah").value);
+  let ket = document.getElementById("keterangan").value;
+
+  if(j<=0 || ket===""){
+    alert("Isi pengeluaran!");
+    return;
+  }
+
+  tabungan -= j;
+  if(tabungan < 0) tabungan = 0;
+
+  history.unshift({text:"- "+rp(j)+" ("+ket+")",type:"minus"});
+  save();
+}
+
+// SAVE
+function save(){
+  localStorage.setItem("tabungan",tabungan);
+  localStorage.setItem("history",JSON.stringify(history));
+  update();
+}
+
+// UPDATE
+function update(){
+  document.getElementById("barang").innerText = nama || "Belum ada target";
+  document.getElementById("tabungan").innerText = rp(tabungan);
+
+  if(target>0 && harian>0){
+    let p = (tabungan/target)*100;
+    if(p>100)p=100;
+
+    document.getElementById("progressText").innerText = Math.floor(p)+"%";
+    document.getElementById("fill").style.width = p+"%";
+
+    if(tabungan >= target){
+      document.getElementById("estimasi").innerText = "🎉 Target tercapai!";
+    } else {
+      let h = target/harian;
+      let b = h/30;
+      document.getElementById("estimasi").innerText =
+        "⏳ "+Math.ceil(h)+" hari (~"+Math.ceil(b)+" bulan)";
+    }
+  }
+
+  let htm="";
+  history.forEach(i=>{
+    htm+=`<div class="${i.type}">${i.text}</div>`;
+  });
+  document.getElementById("history").innerHTML = htm;
+
+  let motivasiList=[
+    "✨ Nabung kecil hari ini, sukses besar nanti!",
+    "🔥 Jangan kalah sama jajan!",
+    "💰 Konsisten itu kunci!",
+    "🚀 Sedikit demi sedikit jadi nyata!"
+  ];
+  document.getElementById("motivasi").innerText =
+    motivasiList[Math.floor(Math.random()*motivasiList.length)];
+}
+
+// INIT
+update();
+</script>
+
+</body>
+</html>
