@@ -7,8 +7,6 @@
 
 <link href="https://fonts.googleapis.com/css2?family=Poppins&family=Fredoka:wght@500&display=swap" rel="stylesheet">
 
-<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-
 <style>
 body{
   margin:0;
@@ -83,8 +81,6 @@ button{
   padding:8px;
   border-radius:10px;
 }
-
-canvas{margin-top:10px;}
 </style>
 </head>
 
@@ -101,6 +97,13 @@ canvas{margin-top:10px;}
   <input id="barang" placeholder="Nama barang">
   <input id="target" type="number" placeholder="Target (Rp)">
   <input id="nominal" type="number" placeholder="Nominal nabung">
+
+  <select id="tipe">
+    <option value="Harian">Harian</option>
+    <option value="Mingguan">Mingguan</option>
+    <option value="Bulanan">Bulanan</option>
+  </select>
+
   <button onclick="tambahBarang()">Tambah Target</button>
 </div>
 
@@ -115,6 +118,7 @@ function tambahBarang(){
   let barang = document.getElementById("barang").value;
   let target = Number(document.getElementById("target").value);
   let nominal = Number(document.getElementById("nominal").value);
+  let tipe = document.getElementById("tipe").value;
 
   if(!barang || target<=0 || nominal<=0){
     alert("Isi semua data!");
@@ -122,12 +126,9 @@ function tambahBarang(){
   }
 
   data.push({
-    barang,
-    target,
-    nominal,
+    barang, target, nominal, tipe,
     saldo:0,
-    history:[],
-    chart:[]
+    history:[]
   });
 
   simpan();
@@ -138,8 +139,6 @@ function nabung(i){
   let d = data[i];
   d.saldo += d.nominal;
   d.history.push("+ Rp "+d.nominal);
-  d.chart.push(d.saldo);
-
   simpan();
   tampil();
 }
@@ -158,7 +157,6 @@ function keluar(i){
   if(d.saldo<0) d.saldo=0;
 
   d.history.push("- Rp "+uang+" ("+ket+")");
-  d.chart.push(d.saldo);
 
   simpan();
   tampil();
@@ -172,18 +170,6 @@ function hapus(i){
   }
 }
 
-function edit(i){
-  let barang = prompt("Nama baru:", data[i].barang);
-  let target = prompt("Target baru:", data[i].target);
-
-  if(barang && target){
-    data[i].barang = barang;
-    data[i].target = Number(target);
-    simpan();
-    tampil();
-  }
-}
-
 function tampil(){
   let list = document.getElementById("list");
   list.innerHTML="";
@@ -192,13 +178,28 @@ function tampil(){
     let persen = (d.saldo/d.target)*100;
     if(persen>100) persen=100;
 
+    let sisa = d.target - d.saldo;
+
+    // 🔥 ESTIMASI SESUAI TIPE
+    let estimasi = 0;
+    if(d.tipe=="Harian"){
+      estimasi = Math.ceil(sisa/d.nominal)+" hari";
+    }
+    if(d.tipe=="Mingguan"){
+      estimasi = Math.ceil(sisa/d.nominal)+" minggu";
+    }
+    if(d.tipe=="Bulanan"){
+      estimasi = Math.ceil(sisa/d.nominal)+" bulan";
+    }
+
     let historyHTML = d.history.map(h => `<div>${h}</div>`).join("");
 
     list.innerHTML += `
     <div class="item">
       <b>${d.barang}</b><br>
       Rp ${d.saldo} / Rp ${d.target}<br>
-      ${persen.toFixed(0)}%
+      ${persen.toFixed(0)}%<br>
+      <b>${d.tipe}</b> | Estimasi: ${estimasi}
 
       <div class="progress">
         <div class="fill" style="width:${persen}%"></div>
@@ -211,51 +212,20 @@ function tampil(){
       <input id="ket${i}" placeholder="Keterangan">
       <button onclick="keluar(${i})">Catat Pengeluaran</button>
 
-      <button class="edit" onclick="edit(${i})">✏️ Edit</button>
       <button class="delete" onclick="hapus(${i})">🗑 Hapus</button>
 
       <div class="history">
         <b>Riwayat</b>
         ${historyHTML}
       </div>
-
-      <canvas id="chart${i}" height="100"></canvas>
     </div>
     `;
-  });
-
-  setTimeout(drawChart,100);
-}
-
-function drawChart(){
-  data.forEach((d,i)=>{
-    new Chart(document.getElementById("chart"+i),{
-      type:"line",
-      data:{
-        labels:d.chart.map((_,i)=>i+1),
-        datasets:[{
-          data:d.chart,
-          borderWidth:2,
-          fill:false
-        }]
-      },
-      options:{
-        plugins:{legend:{display:false}}
-      }
-    });
   });
 }
 
 function simpan(){
   localStorage.setItem("saveplan", JSON.stringify(data));
 }
-
-/* 🔔 NOTIF (simple reminder) */
-setInterval(()=>{
-  if(data.length>0){
-    alert("Jangan lupa nabung hari ini ya 💰");
-  }
-},30000);
 
 tampil();
 </script>
