@@ -6,6 +6,7 @@
 <title>SavePlan</title>
 
 <link href="https://fonts.googleapis.com/css2?family=Poppins&family=Fredoka:wght@500&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 
 <style>
 body{
@@ -13,7 +14,52 @@ body{
   font-family:'Poppins',sans-serif;
   background:linear-gradient(180deg,#fff6fb,#f3f0ff);
 }
-.app{padding:15px}
+
+/* SPLASH */
+#splash{
+  position:fixed;
+  width:100%;
+  height:100vh;
+  background:linear-gradient(135deg,#ffd6ec,#e8d4ff,#dbeafe);
+  display:flex;
+  justify-content:center;
+  align-items:center;
+  flex-direction:column;
+  overflow:hidden;
+  z-index:999;
+}
+
+.icon{
+  font-size:60px;
+}
+
+.bounce{
+  animation:bounce 1s infinite;
+}
+
+@keyframes bounce{
+  0%,100%{transform:translateY(0);}
+  50%{transform:translateY(-20px);}
+}
+
+.coin{
+  position:absolute;
+  top:-50px;
+  font-size:18px;
+  animation:fall linear infinite;
+}
+
+@keyframes fall{
+  to{transform:translateY(110vh);}
+}
+
+#splash h1{
+  font-family:'Fredoka';
+  color:#ff4fa3;
+}
+
+/* APP */
+.app{display:none;padding:15px}
 
 .header{
   background:linear-gradient(135deg,#ffd6ec,#e8d4ff,#dbeafe);
@@ -22,7 +68,10 @@ body{
   text-align:center;
   margin-bottom:15px;
 }
-.header h2{font-family:'Fredoka';color:#ff4fa3;}
+.header h2{
+  font-family:'Fredoka';
+  color:#ff4fa3;
+}
 
 .card{
   background:#fff;
@@ -52,8 +101,9 @@ button{
   margin-top:5px;
 }
 
-.delete{background:linear-gradient(135deg,#ffb3c6,#ff6b81);}
-.edit{background:linear-gradient(135deg,#cdb4ff,#b197fc);}
+.delete{
+  background:linear-gradient(135deg,#ffb3c6,#ff6b81);
+}
 
 .item{
   background:#fff;
@@ -61,6 +111,13 @@ button{
   border-radius:15px;
   margin-bottom:10px;
   box-shadow:0 4px 10px rgba(0,0,0,0.05);
+}
+
+.nama{
+  text-align:center;
+  font-family:'Fredoka';
+  font-size:18px;
+  color:#ff4fa3;
 }
 
 .progress{
@@ -81,12 +138,24 @@ button{
   padding:8px;
   border-radius:10px;
 }
+
+.chartBox{
+  width:100%;
+  height:180px;
+}
 </style>
 </head>
 
 <body>
 
-<div class="app">
+<!-- SPLASH -->
+<div id="splash">
+  <div class="icon bounce">💰</div>
+  <h1>SavePlan</h1>
+  <p>Nabung terarah, tujuan jadi nyata</p>
+</div>
+
+<div class="app" id="app">
 
 <div class="header">
   <p>✨ Sedikit demi sedikit jadi impian</p>
@@ -112,7 +181,26 @@ button{
 </div>
 
 <script>
+/* HUJAN SIMBOL */
+let symbols = ["💰","Rp","+","★"];
+for(let i=0;i<25;i++){
+  let coin=document.createElement("div");
+  coin.className="coin";
+  coin.innerText=symbols[Math.floor(Math.random()*symbols.length)];
+  coin.style.left=Math.random()*100+"%";
+  coin.style.animationDuration=(2+Math.random()*3)+"s";
+  document.getElementById("splash").appendChild(coin);
+}
+
+/* SPLASH */
+setTimeout(()=>{
+  splash.style.display="none";
+  app.style.display="block";
+},2500);
+
+/* DATA */
 let data = JSON.parse(localStorage.getItem("saveplan")) || [];
+let charts = {};
 
 function tambahBarang(){
   let barang = document.getElementById("barang").value;
@@ -125,22 +213,24 @@ function tambahBarang(){
     return;
   }
 
-  data.push({
-    barang, target, nominal, tipe,
-    saldo:0,
-    history:[]
-  });
-
-  simpan();
-  tampil();
+  data.push({barang,target,nominal,tipe,saldo:0,history:[],chart:[0]});
+  simpan(); tampil();
 }
 
 function nabung(i){
   let d = data[i];
+  if(d.saldo >= d.target){
+    alert("Target sudah tercapai!");
+    return;
+  }
+
   d.saldo += d.nominal;
+  if(d.saldo > d.target) d.saldo = d.target;
+
   d.history.push("+ Rp "+d.nominal);
-  simpan();
-  tampil();
+  d.chart.push(d.saldo);
+
+  simpan(); tampil();
 }
 
 function keluar(i){
@@ -157,16 +247,15 @@ function keluar(i){
   if(d.saldo<0) d.saldo=0;
 
   d.history.push("- Rp "+uang+" ("+ket+")");
+  d.chart.push(d.saldo);
 
-  simpan();
-  tampil();
+  simpan(); tampil();
 }
 
 function hapus(i){
   if(confirm("Hapus target?")){
     data.splice(i,1);
-    simpan();
-    tampil();
+    simpan(); tampil();
   }
 }
 
@@ -179,27 +268,18 @@ function tampil(){
     if(persen>100) persen=100;
 
     let sisa = d.target - d.saldo;
+    let estimasi = Math.ceil(sisa / d.nominal);
+    let label = d.tipe=="Harian"?"hari":d.tipe=="Mingguan"?"minggu":"bulan";
 
-    // 🔥 ESTIMASI SESUAI TIPE
-    let estimasi = 0;
-    if(d.tipe=="Harian"){
-      estimasi = Math.ceil(sisa/d.nominal)+" hari";
-    }
-    if(d.tipe=="Mingguan"){
-      estimasi = Math.ceil(sisa/d.nominal)+" minggu";
-    }
-    if(d.tipe=="Bulanan"){
-      estimasi = Math.ceil(sisa/d.nominal)+" bulan";
-    }
-
-    let historyHTML = d.history.map(h => `<div>${h}</div>`).join("");
+    let historyHTML = d.history.map(h=>`<div>${h}</div>`).join("");
 
     list.innerHTML += `
     <div class="item">
-      <b>${d.barang}</b><br>
+      <div class="nama">🎀 ${d.barang} 🎀</div>
+
       Rp ${d.saldo} / Rp ${d.target}<br>
       ${persen.toFixed(0)}%<br>
-      <b>${d.tipe}</b> | Estimasi: ${estimasi}
+      <b>${d.tipe}</b> | Estimasi: ${estimasi} ${label}
 
       <div class="progress">
         <div class="fill" style="width:${persen}%"></div>
@@ -207,19 +287,53 @@ function tampil(){
 
       <button onclick="nabung(${i})">+ Nabung</button>
 
-      <!-- FORM UANG KELUAR -->
       <input id="keluar${i}" placeholder="Uang keluar">
       <input id="ket${i}" placeholder="Keterangan">
       <button onclick="keluar(${i})">Catat Pengeluaran</button>
 
-      <button class="delete" onclick="hapus(${i})">🗑 Hapus</button>
+      <button class="delete" onclick="hapus(${i})">Hapus</button>
 
       <div class="history">
         <b>Riwayat</b>
         ${historyHTML}
       </div>
+
+      <div class="chartBox">
+        <canvas id="chart${i}"></canvas>
+      </div>
     </div>
     `;
+  });
+
+  setTimeout(drawChart,200);
+}
+
+function drawChart(){
+  data.forEach((d,i)=>{
+    let ctx = document.getElementById("chart"+i);
+    if(!ctx) return;
+
+    if(charts[i]) charts[i].destroy();
+
+    charts[i] = new Chart(ctx,{
+      type:"line",
+      data:{
+        labels:d.chart.map((_,idx)=>"Ke-"+(idx+1)),
+        datasets:[{
+          data:d.chart,
+          borderColor:"#ff6fb5",
+          backgroundColor:"rgba(255,111,181,0.2)",
+          fill:true,
+          tension:0.4
+        }]
+      },
+      options:{
+        responsive:true,
+        maintainAspectRatio:false,
+        scales:{y:{beginAtZero:true}},
+        plugins:{legend:{display:false}}
+      }
+    });
   });
 }
 
