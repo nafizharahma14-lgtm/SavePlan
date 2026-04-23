@@ -3,10 +3,11 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-
 <title>SavePlan</title>
 
 <link href="https://fonts.googleapis.com/css2?family=Poppins&family=Fredoka:wght@500&display=swap" rel="stylesheet">
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 
 <style>
 body{
@@ -14,10 +15,8 @@ body{
   font-family:'Poppins',sans-serif;
   background:linear-gradient(180deg,#fff6fb,#f3f0ff);
 }
-
 .app{padding:15px}
 
-/* HEADER */
 .header{
   background:linear-gradient(135deg,#ffd6ec,#e8d4ff,#dbeafe);
   border-radius:20px;
@@ -25,12 +24,8 @@ body{
   text-align:center;
   margin-bottom:15px;
 }
-.header h2{
-  font-family:'Fredoka';
-  color:#ff4fa3;
-}
+.header h2{font-family:'Fredoka';color:#ff4fa3;}
 
-/* CARD */
 .card{
   background:#fff;
   padding:15px;
@@ -39,7 +34,6 @@ body{
   box-shadow:0 5px 12px rgba(0,0,0,0.05);
 }
 
-/* INPUT */
 input,select{
   width:100%;
   padding:10px;
@@ -49,7 +43,6 @@ input,select{
   background:#fdf2f8;
 }
 
-/* BUTTON */
 button{
   width:100%;
   padding:12px;
@@ -61,12 +54,9 @@ button{
   margin-top:5px;
 }
 
-/* DELETE BUTTON */
-.delete{
-  background:linear-gradient(135deg,#ffb3c6,#ff6b81);
-}
+.delete{background:linear-gradient(135deg,#ffb3c6,#ff6b81);}
+.edit{background:linear-gradient(135deg,#cdb4ff,#b197fc);}
 
-/* ITEM */
 .item{
   background:#fff;
   padding:12px;
@@ -79,7 +69,6 @@ button{
   height:10px;
   background:#f3e8ff;
   border-radius:10px;
-  margin:5px 0;
 }
 .fill{
   height:100%;
@@ -89,11 +78,13 @@ button{
 
 .history{
   font-size:12px;
-  margin-top:5px;
+  margin-top:8px;
   background:#fff0f6;
   padding:8px;
   border-radius:10px;
 }
+
+canvas{margin-top:10px;}
 </style>
 </head>
 
@@ -106,22 +97,13 @@ button{
   <h2>SavePlan</h2>
 </div>
 
-<!-- INPUT -->
 <div class="card">
   <input id="barang" placeholder="Nama barang">
   <input id="target" type="number" placeholder="Target (Rp)">
   <input id="nominal" type="number" placeholder="Nominal nabung">
-
-  <select id="tipe">
-    <option>Harian</option>
-    <option>Mingguan</option>
-    <option>Bulanan</option>
-  </select>
-
   <button onclick="tambahBarang()">Tambah Target</button>
 </div>
 
-<!-- LIST -->
 <div id="list"></div>
 
 </div>
@@ -133,7 +115,6 @@ function tambahBarang(){
   let barang = document.getElementById("barang").value;
   let target = Number(document.getElementById("target").value);
   let nominal = Number(document.getElementById("nominal").value);
-  let tipe = document.getElementById("tipe").value;
 
   if(!barang || target<=0 || nominal<=0){
     alert("Isi semua data!");
@@ -144,9 +125,9 @@ function tambahBarang(){
     barang,
     target,
     nominal,
-    tipe,
     saldo:0,
-    history:[]
+    history:[],
+    chart:[]
   });
 
   simpan();
@@ -154,36 +135,50 @@ function tambahBarang(){
 }
 
 function nabung(i){
-  let item = data[i];
-
-  item.saldo += item.nominal;
-  item.history.push("+ Rp "+item.nominal+" (nabung)");
+  let d = data[i];
+  d.saldo += d.nominal;
+  d.history.push("+ Rp "+d.nominal);
+  d.chart.push(d.saldo);
 
   simpan();
   tampil();
 }
 
 function keluar(i){
-  let uang = prompt("Uang keluar?");
-  let ket = prompt("Keterangan?");
+  let uang = Number(document.getElementById("keluar"+i).value);
+  let ket = document.getElementById("ket"+i).value;
 
-  if(!uang || !ket) return;
+  if(!uang || !ket){
+    alert("Isi dulu!");
+    return;
+  }
 
-  uang = Number(uang);
+  let d = data[i];
+  d.saldo -= uang;
+  if(d.saldo<0) d.saldo=0;
 
-  let item = data[i];
-  item.saldo -= uang;
-  if(item.saldo < 0) item.saldo = 0;
-
-  item.history.push("- Rp "+uang+" ("+ket+")");
+  d.history.push("- Rp "+uang+" ("+ket+")");
+  d.chart.push(d.saldo);
 
   simpan();
   tampil();
 }
 
 function hapus(i){
-  if(confirm("Hapus target ini?")){
+  if(confirm("Hapus target?")){
     data.splice(i,1);
+    simpan();
+    tampil();
+  }
+}
+
+function edit(i){
+  let barang = prompt("Nama baru:", data[i].barang);
+  let target = prompt("Target baru:", data[i].target);
+
+  if(barang && target){
+    data[i].barang = barang;
+    data[i].target = Number(target);
     simpan();
     tampil();
   }
@@ -197,38 +192,70 @@ function tampil(){
     let persen = (d.saldo/d.target)*100;
     if(persen>100) persen=100;
 
-    let sisa = d.target - d.saldo;
-    let waktu = Math.ceil(sisa / d.nominal);
-
     let historyHTML = d.history.map(h => `<div>${h}</div>`).join("");
 
     list.innerHTML += `
     <div class="item">
       <b>${d.barang}</b><br>
       Rp ${d.saldo} / Rp ${d.target}<br>
-      ${persen.toFixed(0)}%<br>
-      Estimasi: ${waktu} ${d.tipe}
+      ${persen.toFixed(0)}%
 
       <div class="progress">
         <div class="fill" style="width:${persen}%"></div>
       </div>
 
       <button onclick="nabung(${i})">+ Nabung</button>
-      <button onclick="keluar(${i})">💸 Uang Keluar</button>
-      <button class="delete" onclick="hapus(${i})">🗑 Hapus Target</button>
+
+      <!-- FORM UANG KELUAR -->
+      <input id="keluar${i}" placeholder="Uang keluar">
+      <input id="ket${i}" placeholder="Keterangan">
+      <button onclick="keluar(${i})">Catat Pengeluaran</button>
+
+      <button class="edit" onclick="edit(${i})">✏️ Edit</button>
+      <button class="delete" onclick="hapus(${i})">🗑 Hapus</button>
 
       <div class="history">
         <b>Riwayat</b>
         ${historyHTML}
       </div>
+
+      <canvas id="chart${i}" height="100"></canvas>
     </div>
     `;
+  });
+
+  setTimeout(drawChart,100);
+}
+
+function drawChart(){
+  data.forEach((d,i)=>{
+    new Chart(document.getElementById("chart"+i),{
+      type:"line",
+      data:{
+        labels:d.chart.map((_,i)=>i+1),
+        datasets:[{
+          data:d.chart,
+          borderWidth:2,
+          fill:false
+        }]
+      },
+      options:{
+        plugins:{legend:{display:false}}
+      }
+    });
   });
 }
 
 function simpan(){
   localStorage.setItem("saveplan", JSON.stringify(data));
 }
+
+/* 🔔 NOTIF (simple reminder) */
+setInterval(()=>{
+  if(data.length>0){
+    alert("Jangan lupa nabung hari ini ya 💰");
+  }
+},30000);
 
 tampil();
 </script>
