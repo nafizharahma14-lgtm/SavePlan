@@ -91,7 +91,6 @@ button{
 .riwayat{font-size:12px}
 .chart{height:200px;margin-top:10px}
 
-/* POPUP TARGET SELESAI */
 #popup{
 position:fixed;
 inset:0;
@@ -107,11 +106,8 @@ padding:20px;
 border-radius:15px;
 font-size:20px;
 font-weight:bold;
-animation:pop 0.4s ease;
 }
-@keyframes pop{from{transform:scale(0)}to{transform:scale(1)}}
 
-/* 🔥 EDIT FORM MODAL */
 #editModal{
 position:fixed;
 inset:0;
@@ -174,13 +170,12 @@ max-width:350px;
 
 <div id="list"></div>
 
-<!-- 🔥 EDIT MODAL -->
 <div id="editModal">
 <div class="box">
 <h3>Edit Target</h3>
 
-<input id="e_barang" placeholder="Nama barang">
-<input id="e_target" type="number" placeholder="Target">
+<input id="e_barang">
+<input id="e_target" type="number">
 
 <select id="e_mode">
 <option value="tetap">Tetap</option>
@@ -198,33 +193,49 @@ max-width:350px;
 </div>
 </div>
 
-<div id="popup">
- <div>🎉 TARGET SELESAI!</div>
-</div>
-
 <script>
 let data=JSON.parse(localStorage.getItem("data"))||[];
 let charts={},pies={};
 let view="aktif";
-
 let editIndex=null;
-
-let kata=["Pelan tapi pasti 💰","Impianmu dekat ✨","Semangat nabung 💖"];
-setInterval(()=>motivasi.innerText=kata[Math.floor(Math.random()*kata.length)],3000);
-
-function cekMode(){
- nominalBox.style.display=mode.value==="tetap"?"block":"none";
-}
 
 function simpan(){
  localStorage.setItem("data",JSON.stringify(data));
+}
+
+function cekMode(){
+ nominalBox.style.display=mode.value==="tetap"?"block":"none";
 }
 
 function tanggal(){
  return new Date().toLocaleDateString();
 }
 
-/* 🔥 EDIT UBAH TOTAL (FORM) */
+function tambah(){
+ if(!barang.value||!target.value)return;
+
+ data.push({
+  barang:"🎯 "+barang.value,
+  target:+target.value,
+  nominal:+nominal.value||0,
+  mode:mode.value,
+  periode:periode.value,
+  saldo:0,
+  history:[],
+  chart:[0],
+  selesai:false
+ });
+
+ simpan();
+ tampil();
+}
+
+function hapus(i){
+ data.splice(i,1);
+ simpan();
+ tampil();
+}
+
 function edit(i){
  editIndex=i;
  let d=data[i];
@@ -255,47 +266,26 @@ function saveEdit(){
  closeEdit();
 }
 
-function cekSelesai(d,i){
- let persen=(d.saldo/d.target)*100;
- d.selesai = persen>=100;
-}
-
-function tambah(){
- if(!barang.value||!target.value)return;
-
- data.push({
-  barang:"🎯 "+barang.value,
-  target:+target.value,
-  nominal:+nominal.value||0,
-  mode:mode.value,
-  periode:periode.value,
-  saldo:0,
-  history:[],
-  chart:[0],
-  selesai:false
- });
-
- simpan();
- tampil();
-}
-
-function hapus(i){
- data.splice(i,1);
- simpan();
- tampil();
-}
-
+/* ================= FIX 100% STOP NABUNG ================= */
 function nabung(i){
  let d=data[i];
 
- let val=d.mode==="tetap"?d.nominal:+document.getElementById("flex"+i)?.value;
+ let persen=(d.saldo/d.target)*100;
+
+ if(persen>=100){
+  alert("🎉 Target sudah selesai!");
+  return;
+ }
+
+ let val=d.mode==="tetap"
+ ? d.nominal
+ : +document.getElementById("flex"+i)?.value;
+
  if(!val)return;
 
  d.saldo+=val;
  d.chart.push(d.saldo);
  d.history.push({tipe:"in",value:val,tanggal:tanggal()});
-
- cekSelesai(d,i);
 
  simpan();
  tampil();
@@ -306,10 +296,21 @@ function keluar(i){
  let ket=document.getElementById("ket"+i).value;
  let kat=document.getElementById("kat"+i).value;
 
- data[i].saldo-=val;
- data[i].history.push({tipe:"out",value:val,text:ket,kategori:kat,tanggal:tanggal()});
+ if(!val)return;
 
- simpan(); tampil();
+ let d=data[i];
+ d.saldo-=val;
+
+ d.history.push({
+  tipe:"out",
+  value:val,
+  text:ket,
+  kategori:kat,
+  tanggal:tanggal()
+ });
+
+ simpan();
+ tampil();
 }
 
 function estimasi(d){
@@ -322,55 +323,57 @@ function estimasi(d){
 function tampil(){
  let html="";
 
- let show=data.filter(d=>view==="aktif"? !d.selesai : d.selesai);
+ let show=data.map((d,i)=>({...d,_i:i}))
+ .filter(d=>view==="aktif"? !d.selesai : d.selesai);
 
- show.forEach((d,i)=>{
+ show.forEach(d=>{
+ let p=(d.saldo/d.target)*100 || 0;
 
-  let p=(d.saldo/d.target)*100;
+ let disable = p>=100 ? "disabled style='opacity:0.5;'" : "";
 
-  html+=`
-  <div class="card">
-  <b>${d.barang}</b><br>
-  Rp ${d.saldo}/${d.target}
+ html+=`
+ <div class="card">
+ <b>${d.barang}</b><br>
+ Rp ${d.saldo}/${d.target}
 
-  <div class="progress">
-  <div class="fill" style="width:${p}%">${p.toFixed(0)}%</div>
+ <div class="progress">
+ <div class="fill" style="width:${p}%">${p.toFixed(0)}%</div>
+ </div>
+
+ <div class="estimasi">${estimasi(d)}</div>
+
+ ${d.mode==="fleksibel"
+ ? `<input id="flex${d._i}" placeholder="Nominal">`
+ : ""}
+
+ <button onclick="nabung(${d._i})" ${disable}>+ Nabung</button>
+ <button onclick="edit(${d._i})">✏️ Edit</button>
+ <button onclick="hapus(${d._i})">Hapus</button>
+
+ <div class="card">
+ <input id="out${d._i}" placeholder="Nominal keluar">
+ <input id="ket${d._i}" placeholder="keterangan">
+ <select id="kat${d._i}">
+  <option>makan</option>
+  <option>transport</option>
+  <option>kebutuhan</option>
+  <option>kemauan</option>
+ </select>
+ <button onclick="keluar(${d._i})">Catat</button>
+ </div>
+
+ <div class="card">
+ <b>📜 Riwayat</b>
+ ${d.history.map(h=>`
+  <div class="riwayat">
+  ${h.tanggal} ${h.tipe==="in"?"➕":"➖"} ${h.value} ${h.text? "- "+h.text:""}
   </div>
+ `).join("")}
+ </div>
 
-  <div class="estimasi">${estimasi(d)}</div>
-
-  ${d.mode==="fleksibel"?`<input id="flex${i}" placeholder="Nominal">`:""}
-
-  <button onclick="nabung(${i})">+ Nabung</button>
-
-  <button onclick="edit(${i})">✏️ Edit</button>
-
-  <button onclick="hapus(${i})">Hapus</button>
-
-  <div class="card">
-  <input id="out${i}" placeholder="Nominal keluar">
-  <input id="ket${i}" placeholder="keterangan">
-  <select id="kat${i}">
-   <option>makan</option>
-   <option>transport</option>
-   <option>kebutuhan</option>
-   <option>kemauan</option>
-  </select>
-  <button onclick="keluar(${i})">Catat</button>
-  </div>
-
-  <div class="card">
-  <b>📜 Riwayat</b>
-  ${d.history.map(h=>`
-   <div class="riwayat">
-   ${h.tanggal} ${h.tipe==="in"?"➕":"➖"} ${h.value}
-   </div>
-  `).join("")}
-  </div>
-
-  <canvas id="c${i}" class="chart"></canvas>
-  <canvas id="p${i}" class="chart"></canvas>
-  </div>`;
+ <canvas id="c${d._i}" class="chart"></canvas>
+ <canvas id="p${d._i}" class="chart"></canvas>
+ </div>`;
  });
 
  list.innerHTML=html;
@@ -392,8 +395,11 @@ function draw(){
   });
 
   let kategori={makan:0,transport:0,kebutuhan:0,kemauan:0};
+
   d.history.forEach(h=>{
-   if(h.tipe==="out")kategori[h.kategori]=(kategori[h.kategori]||0)+h.value;
+   if(h.tipe==="out"){
+    kategori[h.kategori]=(kategori[h.kategori]||0)+h.value;
+   }
   });
 
   pies[i]=new Chart(pie,{
@@ -403,7 +409,9 @@ function draw(){
     datasets:[{data:Object.values(kategori)}]
    }
   });
- });
+ }
+
+);
 }
 
 cekMode();
