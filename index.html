@@ -838,6 +838,658 @@ ${d.mode==="fleksibel"
 <option>makan</option>
 <option>transport</option>
 <option>kebutuhan</option>
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+<link href="https://fonts.googleapis.com/css2?family=Quicksand&family=Fredoka&family=Pacifico&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+<style>
+:root{
+ --bg: linear-gradient(135deg,#fdf2f8,#fff7ed,#f1f5f9);
+ --card:#fff;
+ --grad: linear-gradient(120deg,#f9a8d4,#fb7185,#fdba74);
+ --text:#334155;
+}
+.dark{
+ --bg: linear-gradient(135deg,#0f172a,#1e293b);
+ --card:#1e293b;
+ --grad: linear-gradient(120deg,#334155,#475569);
+ --text:#e2e8f0;
+}
+
+body{
+ margin:0;
+ font-family:Quicksand;
+ background:var(--bg);
+ color:var(--text);
+ padding:10px;
+}
+
+#splash{
+ position:fixed;
+ inset:0;
+ display:flex;
+ flex-direction:column;
+ justify-content:center;
+ align-items:center;
+ background:var(--bg);
+ z-index:999;
+ animation:fade 1s forwards 2.5s;
+}
+@keyframes fade{to{opacity:0;visibility:hidden}}
+
+.logo{
+ font-family:Pacifico;
+ font-size:40px;
+ background:var(--grad);
+ -webkit-background-clip:text;
+ color:transparent;
+ animation:bounce 1.5s infinite;
+}
+@keyframes bounce{0%,100%{transform:translateY(0)}50%{transform:translateY(-10px)}}
+
+.header{
+ background:var(--grad);
+ color:#fff;
+ padding:25px;
+ border-radius:15px;
+ text-align:center;
+}
+
+#motivasi{margin-top:5px;font-size:13px}
+
+.card{background:var(--card);padding:12px;border-radius:15px;margin-top:10px}
+input,select{width:100%;padding:8px;margin-top:5px;border-radius:10px;border:1px solid #eee}
+button{width:100%;padding:10px;margin-top:6px;border:none;border-radius:10px;background:var(--grad);color:#fff}
+
+.progress{height:15px;background:#eee;border-radius:10px}
+.fill{height:100%;background:var(--grad);color:#fff;font-size:11px;text-align:center}
+
+.riwayat{font-size:12px;border-bottom:1px dashed #ddd;padding:3px 0}
+
+canvas{margin-top:10px;height:200px}
+</style>
+</head>
+
+<body>
+
+<div id="splash">
+<div class="logo">SavePlan</div>
+<p>Nabung terarah, tujuan jadi nyata</p>
+</div>
+
+<div class="header">
+<h2>✨ SavePlan</h2>
+<div id="motivasi"></div>
+</div>
+
+<button onclick="document.body.classList.toggle('dark')">🎨 Ganti Tema</button>
+
+<div class="card">
+<input id="barang" placeholder="Nama target">
+<input id="target" type="number" placeholder="Target">
+
+<select id="mode">
+<option value="tetap">Tetap</option>
+<option value="fleksibel">Fleksibel</option>
+</select>
+
+<select id="periode">
+<option>Harian</option>
+<option>Mingguan</option>
+<option>Bulanan</option>
+</select>
+
+<input id="nominal" placeholder="Nominal tetap">
+
+<button onclick="tambah()">Tambah</button>
+</div>
+
+<div id="list"></div>
+
+<div id="editModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.6);justify-content:center;align-items:center">
+<div class="card" style="width:90%;max-width:350px">
+<h3>Edit</h3>
+
+<input id="e_barang">
+<input id="e_target" type="number">
+
+<select id="e_mode">
+<option value="tetap">Tetap</option>
+<option value="fleksibel">Fleksibel</option>
+</select>
+
+<select id="e_periode">
+<option>Harian</option>
+<option>Mingguan</option>
+<option>Bulanan</option>
+</select>
+
+<input id="e_nominal">
+
+<button onclick="saveEdit()">Simpan</button>
+<button onclick="closeEdit()">Batal</button>
+</div>
+</div>
+
+<script>
+
+let data=JSON.parse(localStorage.getItem("data"))||[];
+let charts={},pies={};
+let editIndex=null;
+
+/* MOTIVASI */
+let kata=["Pelan tapi pasti 💰","Konsisten 🔥","Sedikit jadi bukit 🏔️"];
+setInterval(()=>{
+document.getElementById("motivasi").innerText=
+kata[Math.floor(Math.random()*kata.length)];
+},2500);
+
+function simpan(){
+localStorage.setItem("data",JSON.stringify(data));
+}
+
+function tanggal(){
+return new Date().toLocaleDateString();
+}
+
+/* TAMBAH */
+function tambah(){
+if(!barang.value||!target.value)return;
+
+data.push({
+barang:"🎯 "+barang.value,
+target:+target.value,
+nominal:mode.value==="tetap"?+nominal.value:0,
+mode:mode.value,
+periode:periode.value,
+saldo:0,
+history:[],
+keluar:[],   // penting
+chart:[0]
+});
+
+simpan();tampil();
+}
+
+/* EDIT */
+function edit(i){
+editIndex=i;
+let d=data[i];
+
+e_barang.value=d.barang;
+e_target.value=d.target;
+e_mode.value=d.mode;
+e_periode.value=d.periode;
+e_nominal.value=d.nominal;
+
+editModal.style.display="flex";
+}
+
+function closeEdit(){editModal.style.display="none";}
+
+function saveEdit(){
+let d=data[editIndex];
+
+d.barang=e_barang.value;
+d.target=+e_target.value;
+d.mode=e_mode.value;
+d.periode=e_periode.value;
+d.nominal=e_mode.value==="tetap"?+e_nominal.value:0;
+
+simpan();tampil();closeEdit();
+}
+
+/* HAPUS */
+function hapus(i){
+data.splice(i,1);
+simpan();
+tampil();
+}
+
+/* NABUNG */
+function nabung(i){
+let d=data[i];
+
+if((d.saldo/d.target)*100>=100){
+alert("Sudah 100%");
+return;
+}
+
+let val=d.mode==="tetap"
+? d.nominal
+: +document.getElementById("flex"+i)?.value;
+
+if(!val)return;
+
+d.saldo+=val;
+d.chart.push(d.saldo);
+
+d.history.push({tipe:"in",value:val,tanggal:tanggal()});
+
+simpan();tampil();
+}
+
+/* PENGELUARAN */
+function keluar(i){
+
+let val=+document.getElementById("out"+i).value;
+let ket=document.getElementById("ket"+i).value;
+let kat=document.getElementById("kat"+i).value;
+
+if(!val)return;
+
+data[i].saldo-=val;
+
+data[i].keluar.push({
+value:val,
+ket:ket,
+kategori:kat,
+tanggal:tanggal()
+});
+
+data[i].history.push({   // 🔥 FIX TAMBAHAN INI
+tipe:"out",
+value:val,
+tanggal:tanggal(),
+text:ket,
+kategori:kat
+});
+
+simpan();tampil();
+}
+
+/* ESTIMASI */
+function estimasi(d){
+let sisa=d.target-d.saldo;
+let rata=d.nominal||1000;
+if(sisa<=0)return "🎉 Tercapai!";
+return "⏳ "+Math.ceil(sisa/rata)+" "+d.periode;
+}
+
+/* RENDER */
+function tampil(){
+
+let html="";
+
+data.forEach((d,i)=>{
+
+let p=(d.saldo/d.target)*100||0;
+
+html+=`
+<div class="card">
+
+<b>${d.barang}</b><br>
+Rp ${d.saldo}/${d.target}
+
+<div class="progress">
+<div class="fill" style="width:${p}%">${p.toFixed(0)}%</div>
+</div>
+
+<div>${estimasi(d)}</div>
+
+${d.mode==="fleksibel"
+? `<input id="flex${i}" placeholder="Nominal">`
+:""}
+
+<button onclick="nabung(${i})">+ Nabung</button>
+<button onclick="edit(${i})">✏️ Edit</button>
+<button onclick="hapus(${i})">Hapus</button>
+
+<div class="card">
+<b>📉 Catatan Pengeluaran</b>
+<input id="out${i}" placeholder="Nominal">
+<input id="ket${i}" placeholder="Keterangan">
+<select id="kat${i}">
+<option>makan</option>
+<option>transport</option>
+<option>kebutuhan</option>
+<option>kemauan</option>
+</select>
+<button onclick="keluar(${i})">Catat</button>
+</div>
+
+<!-- 🔥 RIWAYAT FIX -->
+<div class="card">
+<b>📜 Riwayat</b>
+${(d.history||[]).map(h=>`
+<div class="riwayat">
+${h.tanggal} ${h.tipe==="in"?"➕":"➖"} ${h.value} ${h.text?("- "+h.text):""}
+</div>
+`).join("")}
+</div>
+
+<canvas id="c${i}"></canvas>
+<canvas id="p${i}"></canvas>
+
+</div>`;
+});
+
+document.getElementById("list").innerHTML=html;
+setTimeout(draw,200);
+}
+
+/* CHART */
+function draw(){
+
+data.forEach((d,i)=>{
+
+let ctx=document.getElementById("c"+i);
+let pie=document.getElementById("p"+i);
+if(!ctx||!pie)r<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+<link href="https://fonts.googleapis.com/css2?family=Quicksand&family=Fredoka&family=Pacifico&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+<style>
+:root{
+ --bg: linear-gradient(135deg,#fdf2f8,#fff7ed,#f1f5f9);
+ --card:#fff;
+ --grad: linear-gradient(120deg,#f9a8d4,#fb7185,#fdba74);
+ --text:#334155;
+}
+.dark{
+ --bg: linear-gradient(135deg,#0f172a,#1e293b);
+ --card:#1e293b;
+ --grad: linear-gradient(120deg,#334155,#475569);
+ --text:#e2e8f0;
+}
+
+body{
+ margin:0;
+ font-family:Quicksand;
+ background:var(--bg);
+ color:var(--text);
+ padding:10px;
+}
+
+#splash{
+ position:fixed;
+ inset:0;
+ display:flex;
+ flex-direction:column;
+ justify-content:center;
+ align-items:center;
+ background:var(--bg);
+ z-index:999;
+ animation:fade 1s forwards 2.5s;
+}
+@keyframes fade{to{opacity:0;visibility:hidden}}
+
+.logo{
+ font-family:Pacifico;
+ font-size:40px;
+ background:var(--grad);
+ -webkit-background-clip:text;
+ color:transparent;
+ animation:bounce 1.5s infinite;
+}
+@keyframes bounce{0%,100%{transform:translateY(0)}50%{transform:translateY(-10px)}}
+
+.header{
+ background:var(--grad);
+ color:#fff;
+ padding:25px;
+ border-radius:15px;
+ text-align:center;
+}
+
+#motivasi{margin-top:5px;font-size:13px}
+
+.card{background:var(--card);padding:12px;border-radius:15px;margin-top:10px}
+input,select{width:100%;padding:8px;margin-top:5px;border-radius:10px;border:1px solid #eee}
+button{width:100%;padding:10px;margin-top:6px;border:none;border-radius:10px;background:var(--grad);color:#fff}
+
+.progress{height:15px;background:#eee;border-radius:10px}
+.fill{height:100%;background:var(--grad);color:#fff;font-size:11px;text-align:center}
+
+.riwayat{font-size:12px;border-bottom:1px dashed #ddd;padding:3px 0}
+
+canvas{margin-top:10px;height:200px}
+</style>
+</head>
+
+<body>
+
+<div id="splash">
+<div class="logo">SavePlan</div>
+<p>Nabung terarah, tujuan jadi nyata</p>
+</div>
+
+<div class="header">
+<h2>✨ SavePlan</h2>
+<div id="motivasi"></div>
+</div>
+
+<button onclick="document.body.classList.toggle('dark')">🎨 Ganti Tema</button>
+
+<div class="card">
+<input id="barang" placeholder="Nama target">
+<input id="target" type="number" placeholder="Target">
+
+<select id="mode">
+<option value="tetap">Tetap</option>
+<option value="fleksibel">Fleksibel</option>
+</select>
+
+<select id="periode">
+<option>Harian</option>
+<option>Mingguan</option>
+<option>Bulanan</option>
+</select>
+
+<input id="nominal" placeholder="Nominal tetap">
+
+<button onclick="tambah()">Tambah</button>
+</div>
+
+<div id="list"></div>
+
+<div id="editModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.6);justify-content:center;align-items:center">
+<div class="card" style="width:90%;max-width:350px">
+<h3>Edit</h3>
+
+<input id="e_barang">
+<input id="e_target" type="number">
+
+<select id="e_mode">
+<option value="tetap">Tetap</option>
+<option value="fleksibel">Fleksibel</option>
+</select>
+
+<select id="e_periode">
+<option>Harian</option>
+<option>Mingguan</option>
+<option>Bulanan</option>
+</select>
+
+<input id="e_nominal">
+
+<button onclick="saveEdit()">Simpan</button>
+<button onclick="closeEdit()">Batal</button>
+</div>
+</div>
+
+<script>
+
+let data=JSON.parse(localStorage.getItem("data"))||[];
+let charts={},pies={};
+let editIndex=null;
+
+/* MOTIVASI */
+let kata=["Pelan tapi pasti 💰","Konsisten 🔥","Sedikit jadi bukit 🏔️"];
+setInterval(()=>{
+document.getElementById("motivasi").innerText=
+kata[Math.floor(Math.random()*kata.length)];
+},2500);
+
+function simpan(){
+localStorage.setItem("data",JSON.stringify(data));
+}
+
+function tanggal(){
+return new Date().toLocaleDateString();
+}
+
+/* TAMBAH */
+function tambah(){
+if(!barang.value||!target.value)return;
+
+data.push({
+barang:"🎯 "+barang.value,
+target:+target.value,
+nominal:mode.value==="tetap"?+nominal.value:0,
+mode:mode.value,
+periode:periode.value,
+saldo:0,
+history:[],
+keluar:[],   // penting
+chart:[0]
+});
+
+simpan();tampil();
+}
+
+/* EDIT */
+function edit(i){
+editIndex=i;
+let d=data[i];
+
+e_barang.value=d.barang;
+e_target.value=d.target;
+e_mode.value=d.mode;
+e_periode.value=d.periode;
+e_nominal.value=d.nominal;
+
+editModal.style.display="flex";
+}
+
+function closeEdit(){editModal.style.display="none";}
+
+function saveEdit(){
+let d=data[editIndex];
+
+d.barang=e_barang.value;
+d.target=+e_target.value;
+d.mode=e_mode.value;
+d.periode=e_periode.value;
+d.nominal=e_mode.value==="tetap"?+e_nominal.value:0;
+
+simpan();tampil();closeEdit();
+}
+
+/* HAPUS */
+function hapus(i){
+data.splice(i,1);
+simpan();
+tampil();
+}
+
+/* NABUNG */
+function nabung(i){
+let d=data[i];
+
+if((d.saldo/d.target)*100>=100){
+alert("Sudah 100%");
+return;
+}
+
+let val=d.mode==="tetap"
+? d.nominal
+: +document.getElementById("flex"+i)?.value;
+
+if(!val)return;
+
+d.saldo+=val;
+d.chart.push(d.saldo);
+
+d.history.push({tipe:"in",value:val,tanggal:tanggal()});
+
+simpan();tampil();
+}
+
+/* PENGELUARAN */
+function keluar(i){
+
+let val=+document.getElementById("out"+i).value;
+let ket=document.getElementById("ket"+i).value;
+let kat=document.getElementById("kat"+i).value;
+
+if(!val)return;
+
+data[i].saldo-=val;
+
+data[i].keluar.push({
+value:val,
+ket:ket,
+kategori:kat,
+tanggal:tanggal()
+});
+
+data[i].history.push({   // 🔥 FIX TAMBAHAN INI
+tipe:"out",
+value:val,
+tanggal:tanggal(),
+text:ket,
+kategori:kat
+});
+
+simpan();tampil();
+}
+
+/* ESTIMASI */
+function estimasi(d){
+let sisa=d.target-d.saldo;
+let rata=d.nominal||1000;
+if(sisa<=0)return "🎉 Tercapai!";
+return "⏳ "+Math.ceil(sisa/rata)+" "+d.periode;
+}
+
+/* RENDER */
+function tampil(){
+
+let html="";
+
+data.forEach((d,i)=>{
+
+let p=(d.saldo/d.target)*100||0;
+
+html+=`
+<div class="card">
+
+<b>${d.barang}</b><br>
+Rp ${d.saldo}/${d.target}
+
+<div class="progress">
+<div class="fill" style="width:${p}%">${p.toFixed(0)}%</div>
+</div>
+
+<div>${estimasi(d)}</div>
+
+${d.mode==="fleksibel"
+? `<input id="flex${i}" placeholder="Nominal">`
+:""}
+
+<button onclick="nabung(${i})">+ Nabung</button>
+<button onclick="edit(${i})">✏️ Edit</button>
+<button onclick="hapus(${i})">Hapus</button>
+
+<div class="card">
+<b>📉 Catatan Pengeluaran</b>
+<input id="out${i}" placeholder="Nominal">
+<input id="ket${i}" placeholder="Keterangan">
+<select id="kat${i}">
+<option>makan</option>
+<option>transport</option>
+<option>kebutuhan</option>
 <option>kemauan</option>
 </select>
 <button onclick="keluar(${i})">Catat</button>
@@ -903,4 +1555,4 @@ tampil();
 </script>
 
 </body>
-</html>
+ </html>
