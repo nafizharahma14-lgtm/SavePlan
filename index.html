@@ -29,7 +29,6 @@ body{
  padding:10px;
 }
 
-/* SPLASH */
 #splash{
  position:fixed;
  inset:0;
@@ -52,7 +51,6 @@ body{
  color:transparent;
 }
 
-/* HEADER */
 .header{
  background:var(--grad);
  color:#fff;
@@ -61,7 +59,6 @@ body{
  text-align:center;
 }
 
-/* CARD */
 .card{
  background:var(--card);
  padding:12px;
@@ -91,9 +88,28 @@ button{
 .fill{height:100%;background:var(--grad);color:#fff;font-size:11px;text-align:center}
 
 .estimasi{font-size:12px;color:#64748b}
-.done{text-align:center;color:#fb7185;font-weight:bold}
-.chart{height:200px;margin-top:10px}
 .riwayat{font-size:12px}
+.chart{height:200px;margin-top:10px}
+
+/* popup */
+#popup{
+position:fixed;
+inset:0;
+display:none;
+justify-content:center;
+align-items:center;
+background:rgba(0,0,0,0.6);
+z-index:9999;
+}
+#popup div{
+background:#fff;
+padding:20px;
+border-radius:15px;
+font-size:20px;
+font-weight:bold;
+animation:pop 0.4s ease;
+}
+@keyframes pop{from{transform:scale(0)}to{transform:scale(1)}}
 </style>
 </head>
 
@@ -109,7 +125,13 @@ button{
 <div id="motivasi"></div>
 </div>
 
-<button onclick="toggleTheme()">🎨 Ganti Tema</button>
+<button onclick="document.body.classList.toggle('dark')">🎨 Ganti Tema</button>
+
+<!-- TAB -->
+<div style="display:flex;gap:5px;margin-top:10px;">
+<button onclick="view='aktif';tampil()">Aktif</button>
+<button onclick="view='selesai';tampil()">Selesai</button>
+</div>
 
 <div class="card">
 <input id="barang" placeholder="Nama target">
@@ -135,34 +157,40 @@ button{
 
 <div id="list"></div>
 
+<!-- popup -->
+<div id="popup">
+ <div>🎉 TARGET SELESAI!</div>
+</div>
+
 <script>
 let data=JSON.parse(localStorage.getItem("data"))||[];
-let editIndex=null;
 let charts={},pies={};
+let view="aktif";
 
 let kata=["Pelan tapi pasti 💰","Impianmu dekat ✨","Semangat nabung 💖"];
 setInterval(()=>motivasi.innerText=kata[Math.floor(Math.random()*kata.length)],3000);
-
-function toggleTheme(){
- document.body.classList.toggle("dark");
- tampil();
-}
 
 function cekMode(){
  nominalBox.style.display=mode.value==="tetap"?"block":"none";
 }
 
-function estimasi(d){
- let rata=d.nominal||1000;
- let sisa=d.target-d.saldo;
- if(sisa<=0)return "🎉 Tercapai!";
- return "⏳ "+Math.ceil(sisa/rata)+" "+d.periode;
+function simpan(){
+ localStorage.setItem("data",JSON.stringify(data));
+}
+
+function tanggal(){
+ return new Date().toLocaleDateString();
+}
+
+function cekSelesai(d,i){
+ let persen=(d.saldo/d.target)*100;
+ d.selesai = persen>=100;
 }
 
 function tambah(){
  if(!barang.value||!target.value)return;
 
- let obj={
+ data.push({
   barang:"🎯 "+barang.value,
   target:+target.value,
   nominal:+nominal.value||0,
@@ -170,34 +198,43 @@ function tambah(){
   periode:periode.value,
   saldo:0,
   history:[],
-  chart:[0]
- };
+  chart:[0],
+  selesai:false
+ });
 
- if(editIndex!=null){
-  obj.saldo=data[editIndex].saldo;
-  obj.history=data[editIndex].history;
-  obj.chart=data[editIndex].chart;
-  data[editIndex]=obj;
-  editIndex=null;
- }else data.push(obj);
-
- simpan(); tampil();
+ simpan();
+ tampil();
 }
 
-function tanggal(){
- return new Date().toLocaleDateString();
+function hapus(i){
+ data.splice(i,1);
+ simpan();
+ tampil();
 }
 
 function nabung(i){
  let d=data[i];
+ cekSelesai(d,i);
+
+ if(d.selesai){
+  popup.style.display="flex";
+  setTimeout(()=>popup.style.display="none",1500);
+  view="selesai";
+  tampil();
+  return;
+ }
+
  let val=d.mode==="tetap"?d.nominal:+document.getElementById("flex"+i)?.value;
  if(!val)return;
 
  d.saldo+=val;
  d.chart.push(d.saldo);
- d.history.push({tipe:"in",value:val,kategori:"nabung",tanggal:tanggal()});
+ d.history.push({tipe:"in",value:val,tanggal:tanggal()});
 
- simpan(); tampil();
+ cekSelesai(d,i);
+
+ simpan();
+ tampil();
 }
 
 function keluar(i){
@@ -211,25 +248,19 @@ function keluar(i){
  simpan(); tampil();
 }
 
-function edit(i){
- let d=data[i];
- editIndex=i;
- barang.value=d.barang.replace("🎯 ","");
- target.value=d.target;
- nominal.value=d.nominal;
- mode.value=d.mode;
- periode.value=d.periode;
- cekMode();
-}
-
-function hapus(i){
- data.splice(i,1);
- simpan(); tampil();
+function estimasi(d){
+ let rata=d.nominal||1000;
+ let sisa=d.target-d.saldo;
+ if(sisa<=0)return "🎉 Tercapai!";
+ return "⏳ "+Math.ceil(sisa/rata)+" "+d.periode;
 }
 
 function tampil(){
  let html="";
- data.forEach((d,i)=>{
+
+ let show=data.filter(d=>view==="aktif"? !d.selesai : d.selesai);
+
+ show.forEach((d,i)=>{
   let p=(d.saldo/d.target)*100;
 
   html+=`
@@ -238,21 +269,19 @@ function tampil(){
   Rp ${d.saldo}/${d.target}
 
   <div class="progress">
-   <div class="fill" style="width:${p}%">${p.toFixed(0)}%</div>
+  <div class="fill" style="width:${p}%">${p.toFixed(0)}%</div>
   </div>
 
   <div class="estimasi">${estimasi(d)}</div>
 
-  ${p>=100?'<div class="done">🎉 Target Tercapai</div>':''}
-
   ${d.mode==="fleksibel"?`<input id="flex${i}" placeholder="Nominal">`:""}
 
-  <button onclick="nabung(${i})" ${p>=100?"disabled":""}>+ Nabung</button>
+  <button onclick="nabung(${i})" ${d.selesai?"disabled style='opacity:0.5'":""}>
+  + Nabung
+  </button>
 
-  <button onclick="edit(${i})">Edit</button>
   <button onclick="hapus(${i})">Hapus</button>
 
-  <!-- pengeluaran -->
   <div class="card">
   <input id="out${i}" placeholder="Nominal keluar">
   <input id="ket${i}" placeholder="keterangan">
@@ -265,19 +294,17 @@ function tampil(){
   <button onclick="keluar(${i})">Catat</button>
   </div>
 
-  <!-- riwayat -->
   <div class="card">
   <b>📜 Riwayat</b>
   ${d.history.map(h=>`
    <div class="riwayat">
-   ${h.tanggal} ${h.tipe==="in"?"➕":"➖"} ${h.value} ${h.text||""}
+   ${h.tanggal} ${h.tipe==="in"?"➕":"➖"} ${h.value}
    </div>
   `).join("")}
   </div>
 
   <canvas id="c${i}" class="chart"></canvas>
   <canvas id="p${i}" class="chart"></canvas>
-
   </div>`;
  });
 
@@ -296,10 +323,7 @@ function draw(){
 
   charts[i]=new Chart(ctx,{
    type:"line",
-   data:{
-    labels:d.chart.map((_,x)=>x),
-    datasets:[{data:d.chart,borderColor:"#fb7185"}]
-   }
+   data:{labels:d.chart.map((_,x)=>x),datasets:[{data:d.chart}]}
   });
 
   let kategori={makan:0,transport:0,kebutuhan:0,kemauan:0};
@@ -311,17 +335,10 @@ function draw(){
    type:"pie",
    data:{
     labels:Object.keys(kategori),
-    datasets:[{
-     data:Object.values(kategori),
-     backgroundColor:["#fb7185","#fbbf24","#60a5fa","#a78bfa"]
-    }]
+    datasets:[{data:Object.values(kategori)}]
    }
   });
  });
-}
-
-function simpan(){
- localStorage.setItem("data",JSON.stringify(data));
 }
 
 cekMode();
