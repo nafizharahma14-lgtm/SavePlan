@@ -3,344 +3,328 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>SavePlan</title>
 
-<link href="https://fonts.googleapis.com/css2?family=Poppins&family=Fredoka:wght@500&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Quicksand&family=Fredoka&family=Pacifico&display=swap" rel="stylesheet">
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 
 <style>
+:root{
+ --bg: linear-gradient(135deg,#fdf2f8,#fff7ed,#f1f5f9);
+ --card:#fff;
+ --grad: linear-gradient(120deg,#f9a8d4,#fb7185,#fdba74);
+ --text:#334155;
+}
+.dark{
+ --bg: linear-gradient(135deg,#0f172a,#1e293b);
+ --card:#1e293b;
+ --grad: linear-gradient(120deg,#334155,#475569);
+ --text:#e2e8f0;
+}
+
 body{
-  margin:0;
-  font-family:'Poppins',sans-serif;
-  background:linear-gradient(180deg,#fff6fb,#f3f0ff);
+ margin:0;
+ font-family:Quicksand;
+ background:var(--bg);
+ color:var(--text);
+ padding:10px;
 }
 
 /* SPLASH */
 #splash{
-  position:fixed;
-  width:100%;
-  height:100vh;
-  background:linear-gradient(135deg,#ffd6ec,#e8d4ff,#dbeafe);
-  display:flex;
-  justify-content:center;
-  align-items:center;
-  flex-direction:column;
-  overflow:hidden;
-  z-index:999;
+ position:fixed;
+ inset:0;
+ display:flex;
+ flex-direction:column;
+ justify-content:center;
+ align-items:center;
+ background:var(--bg);
+ z-index:999;
+ animation:fade 1s forwards;
+ animation-delay:2.5s;
+}
+@keyframes fade{to{opacity:0;visibility:hidden}}
+
+.logo{
+ font-family:Pacifico;
+ font-size:40px;
+ background:var(--grad);
+ -webkit-background-clip:text;
+ color:transparent;
 }
 
-.icon{
-  font-size:60px;
-}
-
-.bounce{
-  animation:bounce 1s infinite;
-}
-
-@keyframes bounce{
-  0%,100%{transform:translateY(0);}
-  50%{transform:translateY(-20px);}
-}
-
-.coin{
-  position:absolute;
-  top:-50px;
-  font-size:18px;
-  animation:fall linear infinite;
-}
-
-@keyframes fall{
-  to{transform:translateY(110vh);}
-}
-
-#splash h1{
-  font-family:'Fredoka';
-  color:#ff4fa3;
-}
-
-/* APP */
-.app{display:none;padding:15px}
-
+/* HEADER */
 .header{
-  background:linear-gradient(135deg,#ffd6ec,#e8d4ff,#dbeafe);
-  border-radius:20px;
-  padding:15px;
-  text-align:center;
-  margin-bottom:15px;
-}
-.header h2{
-  font-family:'Fredoka';
-  color:#ff4fa3;
+ background:var(--grad);
+ color:#fff;
+ padding:25px;
+ border-radius:15px;
+ text-align:center;
 }
 
+/* CARD */
 .card{
-  background:#fff;
-  padding:15px;
-  border-radius:20px;
-  margin-bottom:15px;
-  box-shadow:0 5px 12px rgba(0,0,0,0.05);
+ background:var(--card);
+ padding:12px;
+ border-radius:15px;
+ margin-top:10px;
 }
 
 input,select{
-  width:100%;
-  padding:10px;
-  margin:5px 0;
-  border-radius:10px;
-  border:none;
-  background:#fdf2f8;
+ width:100%;
+ padding:8px;
+ margin-top:5px;
+ border-radius:10px;
+ border:1px solid #eee;
 }
 
 button{
-  width:100%;
-  padding:12px;
-  border:none;
-  border-radius:15px;
-  background:linear-gradient(135deg,#ff9ecf,#ff6fb5);
-  color:#fff;
-  font-weight:bold;
-  margin-top:5px;
+ width:100%;
+ padding:10px;
+ margin-top:6px;
+ border:none;
+ border-radius:10px;
+ background:var(--grad);
+ color:#fff;
 }
 
-.delete{
-  background:linear-gradient(135deg,#ffb3c6,#ff6b81);
-}
+.progress{height:15px;background:#eee;border-radius:10px;}
+.fill{height:100%;background:var(--grad);color:#fff;font-size:11px;text-align:center}
 
-.item{
-  background:#fff;
-  padding:12px;
-  border-radius:15px;
-  margin-bottom:10px;
-  box-shadow:0 4px 10px rgba(0,0,0,0.05);
-}
-
-.nama{
-  text-align:center;
-  font-family:'Fredoka';
-  font-size:18px;
-  color:#ff4fa3;
-}
-
-.progress{
-  height:10px;
-  background:#f3e8ff;
-  border-radius:10px;
-}
-.fill{
-  height:100%;
-  background:linear-gradient(to right,#ff9ecf,#ffc6e5);
-  border-radius:10px;
-}
-
-.history{
-  font-size:12px;
-  margin-top:8px;
-  background:#fff0f6;
-  padding:8px;
-  border-radius:10px;
-}
-
-.chartBox{
-  width:100%;
-  height:180px;
-}
+.estimasi{font-size:12px;color:#64748b}
+.done{text-align:center;color:#fb7185;font-weight:bold}
+.chart{height:200px;margin-top:10px}
+.riwayat{font-size:12px}
 </style>
 </head>
 
 <body>
 
-<!-- SPLASH -->
 <div id="splash">
-  <div class="icon bounce">💰</div>
-  <h1>SavePlan</h1>
-  <p>Nabung terarah, tujuan jadi nyata</p>
+<div class="logo">SavePlan</div>
+<p>Nabung terarah, tujuan jadi nyata</p>
 </div>
-
-<div class="app" id="app">
 
 <div class="header">
-  <p>✨ Sedikit demi sedikit jadi impian</p>
-  <h2>SavePlan</h2>
+<h2>✨ SavePlan</h2>
+<div id="motivasi"></div>
 </div>
 
+<button onclick="toggleTheme()">🎨 Ganti Tema</button>
+
 <div class="card">
-  <input id="barang" placeholder="Nama barang">
-  <input id="target" type="number" placeholder="Target (Rp)">
-  <input id="nominal" type="number" placeholder="Nominal nabung">
+<input id="barang" placeholder="Nama target">
+<input id="target" type="number" placeholder="Target">
 
-  <select id="tipe">
-    <option value="Harian">Harian</option>
-    <option value="Mingguan">Mingguan</option>
-    <option value="Bulanan">Bulanan</option>
-  </select>
+<select id="mode" onchange="cekMode()">
+<option value="tetap">Tetap</option>
+<option value="fleksibel">Fleksibel</option>
+</select>
 
-  <button onclick="tambahBarang()">Tambah Target</button>
+<select id="periode">
+<option>Harian</option>
+<option>Mingguan</option>
+<option>Bulanan</option>
+</select>
+
+<div id="nominalBox">
+<input id="nominal" placeholder="Nominal tetap">
+</div>
+
+<button onclick="tambah()">Tambah</button>
 </div>
 
 <div id="list"></div>
 
-</div>
-
 <script>
-/* HUJAN SIMBOL */
-let symbols = ["💰","Rp","+","★"];
-for(let i=0;i<25;i++){
-  let coin=document.createElement("div");
-  coin.className="coin";
-  coin.innerText=symbols[Math.floor(Math.random()*symbols.length)];
-  coin.style.left=Math.random()*100+"%";
-  coin.style.animationDuration=(2+Math.random()*3)+"s";
-  document.getElementById("splash").appendChild(coin);
+let data=JSON.parse(localStorage.getItem("data"))||[];
+let editIndex=null;
+let charts={},pies={};
+
+let kata=["Pelan tapi pasti 💰","Impianmu dekat ✨","Semangat nabung 💖"];
+setInterval(()=>motivasi.innerText=kata[Math.floor(Math.random()*kata.length)],3000);
+
+function toggleTheme(){
+ document.body.classList.toggle("dark");
+ tampil();
 }
 
-/* SPLASH */
-setTimeout(()=>{
-  splash.style.display="none";
-  app.style.display="block";
-},2500);
+function cekMode(){
+ nominalBox.style.display=mode.value==="tetap"?"block":"none";
+}
 
-/* DATA */
-let data = JSON.parse(localStorage.getItem("saveplan")) || [];
-let charts = {};
+function estimasi(d){
+ let rata=d.nominal||1000;
+ let sisa=d.target-d.saldo;
+ if(sisa<=0)return "🎉 Tercapai!";
+ return "⏳ "+Math.ceil(sisa/rata)+" "+d.periode;
+}
 
-function tambahBarang(){
-  let barang = document.getElementById("barang").value;
-  let target = Number(document.getElementById("target").value);
-  let nominal = Number(document.getElementById("nominal").value);
-  let tipe = document.getElementById("tipe").value;
+function tambah(){
+ if(!barang.value||!target.value)return;
 
-  if(!barang || target<=0 || nominal<=0){
-    alert("Isi semua data!");
-    return;
-  }
+ let obj={
+  barang:"🎯 "+barang.value,
+  target:+target.value,
+  nominal:+nominal.value||0,
+  mode:mode.value,
+  periode:periode.value,
+  saldo:0,
+  history:[],
+  chart:[0]
+ };
 
-  data.push({barang,target,nominal,tipe,saldo:0,history:[],chart:[0]});
-  simpan(); tampil();
+ if(editIndex!=null){
+  obj.saldo=data[editIndex].saldo;
+  obj.history=data[editIndex].history;
+  obj.chart=data[editIndex].chart;
+  data[editIndex]=obj;
+  editIndex=null;
+ }else data.push(obj);
+
+ simpan(); tampil();
+}
+
+function tanggal(){
+ return new Date().toLocaleDateString();
 }
 
 function nabung(i){
-  let d = data[i];
-  if(d.saldo >= d.target){
-    alert("Target sudah tercapai!");
-    return;
-  }
+ let d=data[i];
+ let val=d.mode==="tetap"?d.nominal:+document.getElementById("flex"+i)?.value;
+ if(!val)return;
 
-  d.saldo += d.nominal;
-  if(d.saldo > d.target) d.saldo = d.target;
+ d.saldo+=val;
+ d.chart.push(d.saldo);
+ d.history.push({tipe:"in",value:val,kategori:"nabung",tanggal:tanggal()});
 
-  d.history.push("+ Rp "+d.nominal);
-  d.chart.push(d.saldo);
-
-  simpan(); tampil();
+ simpan(); tampil();
 }
 
 function keluar(i){
-  let uang = Number(document.getElementById("keluar"+i).value);
-  let ket = document.getElementById("ket"+i).value;
+ let val=+document.getElementById("out"+i).value;
+ let ket=document.getElementById("ket"+i).value;
+ let kat=document.getElementById("kat"+i).value;
 
-  if(!uang || !ket){
-    alert("Isi dulu!");
-    return;
-  }
+ data[i].saldo-=val;
+ data[i].history.push({tipe:"out",value:val,text:ket,kategori:kat,tanggal:tanggal()});
 
-  let d = data[i];
-  d.saldo -= uang;
-  if(d.saldo<0) d.saldo=0;
+ simpan(); tampil();
+}
 
-  d.history.push("- Rp "+uang+" ("+ket+")");
-  d.chart.push(d.saldo);
-
-  simpan(); tampil();
+function edit(i){
+ let d=data[i];
+ editIndex=i;
+ barang.value=d.barang.replace("🎯 ","");
+ target.value=d.target;
+ nominal.value=d.nominal;
+ mode.value=d.mode;
+ periode.value=d.periode;
+ cekMode();
 }
 
 function hapus(i){
-  if(confirm("Hapus target?")){
-    data.splice(i,1);
-    simpan(); tampil();
-  }
+ data.splice(i,1);
+ simpan(); tampil();
 }
 
 function tampil(){
-  let list = document.getElementById("list");
-  list.innerHTML="";
+ let html="";
+ data.forEach((d,i)=>{
+  let p=(d.saldo/d.target)*100;
 
-  data.forEach((d,i)=>{
-    let persen = (d.saldo/d.target)*100;
-    if(persen>100) persen=100;
+  html+=`
+  <div class="card">
+  <b>${d.barang}</b><br>
+  Rp ${d.saldo}/${d.target}
 
-    let sisa = d.target - d.saldo;
-    let estimasi = Math.ceil(sisa / d.nominal);
-    let label = d.tipe=="Harian"?"hari":d.tipe=="Mingguan"?"minggu":"bulan";
+  <div class="progress">
+   <div class="fill" style="width:${p}%">${p.toFixed(0)}%</div>
+  </div>
 
-    let historyHTML = d.history.map(h=>`<div>${h}</div>`).join("");
+  <div class="estimasi">${estimasi(d)}</div>
 
-    list.innerHTML += `
-    <div class="item">
-      <div class="nama">🎀 ${d.barang} 🎀</div>
+  ${p>=100?'<div class="done">🎉 Target Tercapai</div>':''}
 
-      Rp ${d.saldo} / Rp ${d.target}<br>
-      ${persen.toFixed(0)}%<br>
-      <b>${d.tipe}</b> | Estimasi: ${estimasi} ${label}
+  ${d.mode==="fleksibel"?`<input id="flex${i}" placeholder="Nominal">`:""}
 
-      <div class="progress">
-        <div class="fill" style="width:${persen}%"></div>
-      </div>
+  <button onclick="nabung(${i})" ${p>=100?"disabled":""}>+ Nabung</button>
 
-      <button onclick="nabung(${i})">+ Nabung</button>
+  <button onclick="edit(${i})">Edit</button>
+  <button onclick="hapus(${i})">Hapus</button>
 
-      <input id="keluar${i}" placeholder="Uang keluar">
-      <input id="ket${i}" placeholder="Keterangan">
-      <button onclick="keluar(${i})">Catat Pengeluaran</button>
+  <!-- pengeluaran -->
+  <div class="card">
+  <input id="out${i}" placeholder="Nominal keluar">
+  <input id="ket${i}" placeholder="keterangan">
+  <select id="kat${i}">
+   <option>makan</option>
+   <option>transport</option>
+   <option>kebutuhan</option>
+   <option>kemauan</option>
+  </select>
+  <button onclick="keluar(${i})">Catat</button>
+  </div>
 
-      <button class="delete" onclick="hapus(${i})">Hapus</button>
+  <!-- riwayat -->
+  <div class="card">
+  <b>📜 Riwayat</b>
+  ${d.history.map(h=>`
+   <div class="riwayat">
+   ${h.tanggal} ${h.tipe==="in"?"➕":"➖"} ${h.value} ${h.text||""}
+   </div>
+  `).join("")}
+  </div>
 
-      <div class="history">
-        <b>Riwayat</b>
-        ${historyHTML}
-      </div>
+  <canvas id="c${i}" class="chart"></canvas>
+  <canvas id="p${i}" class="chart"></canvas>
 
-      <div class="chartBox">
-        <canvas id="chart${i}"></canvas>
-      </div>
-    </div>
-    `;
-  });
+  </div>`;
+ });
 
-  setTimeout(drawChart,200);
+ list.innerHTML=html;
+ setTimeout(draw,200);
 }
 
-function drawChart(){
-  data.forEach((d,i)=>{
-    let ctx = document.getElementById("chart"+i);
-    if(!ctx) return;
+function draw(){
+ data.forEach((d,i)=>{
+  let ctx=document.getElementById("c"+i);
+  let pie=document.getElementById("p"+i);
+  if(!ctx||!pie)return;
 
-    if(charts[i]) charts[i].destroy();
+  if(charts[i])charts[i].destroy();
+  if(pies[i])pies[i].destroy();
 
-    charts[i] = new Chart(ctx,{
-      type:"line",
-      data:{
-        labels:d.chart.map((_,idx)=>"Ke-"+(idx+1)),
-        datasets:[{
-          data:d.chart,
-          borderColor:"#ff6fb5",
-          backgroundColor:"rgba(255,111,181,0.2)",
-          fill:true,
-          tension:0.4
-        }]
-      },
-      options:{
-        responsive:true,
-        maintainAspectRatio:false,
-        scales:{y:{beginAtZero:true}},
-        plugins:{legend:{display:false}}
-      }
-    });
+  charts[i]=new Chart(ctx,{
+   type:"line",
+   data:{
+    labels:d.chart.map((_,x)=>x),
+    datasets:[{data:d.chart,borderColor:"#fb7185"}]
+   }
   });
+
+  let kategori={makan:0,transport:0,kebutuhan:0,kemauan:0};
+  d.history.forEach(h=>{
+   if(h.tipe==="out")kategori[h.kategori]=(kategori[h.kategori]||0)+h.value;
+  });
+
+  pies[i]=new Chart(pie,{
+   type:"pie",
+   data:{
+    labels:Object.keys(kategori),
+    datasets:[{
+     data:Object.values(kategori),
+     backgroundColor:["#fb7185","#fbbf24","#60a5fa","#a78bfa"]
+    }]
+   }
+  });
+ });
 }
 
 function simpan(){
-  localStorage.setItem("saveplan", JSON.stringify(data));
+ localStorage.setItem("data",JSON.stringify(data));
 }
 
+cekMode();
 tampil();
 </script>
 
