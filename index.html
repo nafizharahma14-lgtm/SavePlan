@@ -29,7 +29,6 @@ body{
  padding:10px;
 }
 
-/* 🔥 SPLASH ANIMATION (TAMBAHAN) */
 #splash{
  position:fixed;
  inset:0;
@@ -41,10 +40,7 @@ body{
  z-index:999;
  animation:fade 1s forwards 2.5s;
 }
-
-@keyframes fade{
- to{opacity:0;visibility:hidden;transform:scale(1.1)}
-}
+@keyframes fade{to{opacity:0;visibility:hidden}}
 
 .logo{
  font-family:Pacifico;
@@ -54,11 +50,7 @@ body{
  color:transparent;
  animation:bounce 1.5s infinite;
 }
-
-@keyframes bounce{
-0%,100%{transform:translateY(0)}
-50%{transform:translateY(-10px)}
-}
+@keyframes bounce{0%,100%{transform:translateY(0)}50%{transform:translateY(-10px)}}
 
 .header{
  background:var(--grad);
@@ -68,43 +60,28 @@ body{
  text-align:center;
 }
 
-/* 🔥 MOTIVASI STYLE (TAMBAHAN) */
-#motivasi{
- margin-top:5px;
- font-size:13px;
- opacity:0.9;
-}
+#motivasi{margin-top:5px;font-size:13px}
 
 .card{background:var(--card);padding:12px;border-radius:15px;margin-top:10px}
 input,select{width:100%;padding:8px;margin-top:5px;border-radius:10px;border:1px solid #eee}
 button{width:100%;padding:10px;margin-top:6px;border:none;border-radius:10px;background:var(--grad);color:#fff}
+
 .progress{height:15px;background:#eee;border-radius:10px}
 .fill{height:100%;background:var(--grad);color:#fff;font-size:11px;text-align:center}
-.riwayat{font-size:12px;padding:3px 0;border-bottom:1px dashed #ddd}
-.chart{height:200px;margin-top:10px}
 
-#editModal{
-position:fixed;inset:0;display:none;
-justify-content:center;align-items:center;
-background:rgba(0,0,0,0.6);
-z-index:9999;
-}
-#editModal .box{
-background:var(--card);
-padding:15px;border-radius:15px;width:90%;max-width:350px;
-}
+.riwayat{font-size:12px;border-bottom:1px dashed #ddd;padding:3px 0}
+
+canvas{margin-top:10px;height:200px}
 </style>
 </head>
 
 <body>
 
-<!-- 🔥 SPLASH -->
 <div id="splash">
 <div class="logo">SavePlan</div>
 <p>Nabung terarah, tujuan jadi nyata</p>
 </div>
 
-<!-- 🔥 HEADER + MOTIVASI (TAMBAHAN) -->
 <div class="header">
 <h2>✨ SavePlan</h2>
 <div id="motivasi"></div>
@@ -134,10 +111,9 @@ padding:15px;border-radius:15px;width:90%;max-width:350px;
 
 <div id="list"></div>
 
-<!-- EDIT -->
-<div id="editModal">
-<div class="box">
-<h3>Edit Target</h3>
+<div id="editModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.6);justify-content:center;align-items:center">
+<div class="card" style="width:90%;max-width:350px">
+<h3>Edit</h3>
 
 <input id="e_barang">
 <input id="e_target" type="number">
@@ -161,24 +137,18 @@ padding:15px;border-radius:15px;width:90%;max-width:350px;
 </div>
 
 <script>
+
 let data=JSON.parse(localStorage.getItem("data"))||[];
 let charts={},pies={};
 let editIndex=null;
 
-/* 🔥 MOTIVASI (TAMBAHAN) */
-let kata=[
-"Pelan tapi pasti 💰",
-"Sedikit demi sedikit jadi bukit 🏔️",
-"Kamu pasti bisa ✨",
-"Disiplin hari ini, sukses nanti 🔥"
-];
-
+/* MOTIVASI */
+let kata=["Pelan tapi pasti 💰","Konsisten 🔥","Sedikit jadi bukit 🏔️"];
 setInterval(()=>{
 document.getElementById("motivasi").innerText=
 kata[Math.floor(Math.random()*kata.length)];
 },2500);
 
-/* SIMPAN */
 function simpan(){
 localStorage.setItem("data",JSON.stringify(data));
 }
@@ -187,9 +157,10 @@ function tanggal(){
 return new Date().toLocaleDateString();
 }
 
-/* ===== SEMUA LOGIC KAMU TETAP (TIDAK DIUBAH) ===== */
+/* TAMBAH */
+function tambah(){
+if(!barang.value||!target.value)return;
 
-function tambah(){ if(!barang.value||!target.value)return;
 data.push({
 barang:"🎯 "+barang.value,
 target:+target.value,
@@ -198,20 +169,24 @@ mode:mode.value,
 periode:periode.value,
 saldo:0,
 history:[],
-keluar:[],
+keluar:[],   // penting
 chart:[0]
 });
+
 simpan();tampil();
 }
 
+/* EDIT */
 function edit(i){
 editIndex=i;
 let d=data[i];
+
 e_barang.value=d.barang;
 e_target.value=d.target;
 e_mode.value=d.mode;
 e_periode.value=d.periode;
 e_nominal.value=d.nominal;
+
 editModal.style.display="flex";
 }
 
@@ -219,18 +194,31 @@ function closeEdit(){editModal.style.display="none";}
 
 function saveEdit(){
 let d=data[editIndex];
+
 d.barang=e_barang.value;
 d.target=+e_target.value;
 d.mode=e_mode.value;
 d.periode=e_periode.value;
 d.nominal=e_mode.value==="tetap"?+e_nominal.value:0;
+
 simpan();tampil();closeEdit();
 }
 
+/* HAPUS */
+function hapus(i){
+data.splice(i,1);
+simpan();
+tampil();
+}
+
+/* NABUNG */
 function nabung(i){
 let d=data[i];
-let p=(d.saldo/d.target)*100;
-if(p>=100)return;
+
+if((d.saldo/d.target)*100>=100){
+alert("Sudah 100%");
+return;
+}
 
 let val=d.mode==="tetap"
 ? d.nominal
@@ -240,12 +228,15 @@ if(!val)return;
 
 d.saldo+=val;
 d.chart.push(d.saldo);
-d.history.push({value:val,tanggal:tanggal()});
+
+d.history.push({tipe:"in",value:val,tanggal:tanggal()});
 
 simpan();tampil();
 }
 
+/* PENGELUARAN */
 function keluar(i){
+
 let val=+document.getElementById("out"+i).value;
 let ket=document.getElementById("ket"+i).value;
 let kat=document.getElementById("kat"+i).value;
@@ -261,9 +252,18 @@ kategori:kat,
 tanggal:tanggal()
 });
 
+data[i].history.push({   // 🔥 FIX TAMBAHAN INI
+tipe:"out",
+value:val,
+tanggal:tanggal(),
+text:ket,
+kategori:kat
+});
+
 simpan();tampil();
 }
 
+/* ESTIMASI */
 function estimasi(d){
 let sisa=d.target-d.saldo;
 let rata=d.nominal||1000;
@@ -271,13 +271,18 @@ if(sisa<=0)return "🎉 Tercapai!";
 return "⏳ "+Math.ceil(sisa/rata)+" "+d.periode;
 }
 
+/* RENDER */
 function tampil(){
+
 let html="";
+
 data.forEach((d,i)=>{
+
 let p=(d.saldo/d.target)*100||0;
 
 html+=`
 <div class="card">
+
 <b>${d.barang}</b><br>
 Rp ${d.saldo}/${d.target}
 
@@ -287,7 +292,9 @@ Rp ${d.saldo}/${d.target}
 
 <div>${estimasi(d)}</div>
 
-${d.mode==="fleksibel"?`<input id="flex${i}" placeholder="Nominal">`:""}
+${d.mode==="fleksibel"
+? `<input id="flex${i}" placeholder="Nominal">`
+:""}
 
 <button onclick="nabung(${i})">+ Nabung</button>
 <button onclick="edit(${i})">✏️ Edit</button>
@@ -306,13 +313,63 @@ ${d.mode==="fleksibel"?`<input id="flex${i}" placeholder="Nominal">`:""}
 <button onclick="keluar(${i})">Catat</button>
 </div>
 
+<!-- 🔥 RIWAYAT FIX -->
+<div class="card">
+<b>📜 Riwayat</b>
+${(d.history||[]).map(h=>`
+<div class="riwayat">
+${h.tanggal} ${h.tipe==="in"?"➕":"➖"} ${h.value} ${h.text?("- "+h.text):""}
+</div>
+`).join("")}
+</div>
+
+<canvas id="c${i}"></canvas>
+<canvas id="p${i}"></canvas>
+
 </div>`;
 });
 
-list.innerHTML=html;
+document.getElementById("list").innerHTML=html;
+setTimeout(draw,200);
+}
+
+/* CHART */
+function draw(){
+
+data.forEach((d,i)=>{
+
+let ctx=document.getElementById("c"+i);
+let pie=document.getElementById("p"+i);
+if(!ctx||!pie)return;
+
+if(charts[i])charts[i].destroy();
+if(pies[i])pies[i].destroy();
+
+charts[i]=new Chart(ctx,{
+type:"line",
+data:{labels:d.chart.map((_,x)=>x),datasets:[{data:d.chart}]}
+});
+
+let kategori={makan:0,transport:0,kebutuhan:0,kemauan:0};
+
+(d.keluar||[]).forEach(h=>{
+kategori[h.kategori]=(kategori[h.kategori]||0)+h.value;
+});
+
+pies[i]=new Chart(pie,{
+type:"pie",
+data:{
+labels:Object.keys(kategori),
+datasets:[{data:Object.values(kategori)}]
+}
+});
+
+});
+
 }
 
 tampil();
+
 </script>
 
 </body>
