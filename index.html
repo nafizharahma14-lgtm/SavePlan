@@ -87,7 +87,6 @@ canvas{margin-top:10px;height:200px}
 <div id="motivasi"></div>
 </div>
 
-<!-- 🔥 FIX: tombol theme pakai function -->
 <button onclick="toggleTheme()">🎨 Ganti Tema</button>
 
 <div class="card">
@@ -116,32 +115,18 @@ canvas{margin-top:10px;height:200px}
 
 let data=JSON.parse(localStorage.getItem("data"))||[];
 let charts={},pies={};
-let editIndex=null;
 
-/* ================= THEME FIX (BARU TAMBAHAN) ================= */
-function setTheme(mode){
- if(mode==="dark"){
-  document.body.classList.add("dark");
- }else{
-  document.body.classList.remove("dark");
- }
- localStorage.setItem("theme",mode);
-}
-
+/* THEME */
 function toggleTheme(){
  let isDark=document.body.classList.toggle("dark");
  localStorage.setItem("theme",isDark?"dark":"light");
 }
-
-// auto load theme
 (function(){
  let saved=localStorage.getItem("theme");
- if(saved){
-  setTheme(saved);
- }
+ if(saved==="dark") document.body.classList.add("dark");
 })();
 
-/* ================= MOTIVASI ================= */
+/* MOTIVASI */
 let kata=["Pelan tapi pasti 💰","Konsisten 🔥","Sedikit jadi bukit 🏔️"];
 setInterval(()=>{
 document.getElementById("motivasi").innerText=
@@ -154,6 +139,16 @@ localStorage.setItem("data",JSON.stringify(data));
 
 function tanggal(){
 return new Date().toLocaleDateString();
+}
+
+/* 🔥 FITUR LIMIT HARIAN */
+function hariIni(){
+ return new Date().toLocaleDateString();
+}
+
+function hitungNabungHariIni(d){
+ let today=hariIni();
+ return (d.history||[]).filter(h=>h.tipe==="in" && h.tanggal===today).length;
 }
 
 /* TAMBAH */
@@ -175,32 +170,39 @@ chart:[0]
 simpan();tampil();
 }
 
-/* EDIT */
+/* EDIT INLINE */
 function edit(i){
-editIndex=i;
-let d=data[i];
+ let d=data[i];
 
-e_barang.value=d.barang;
-e_target.value=d.target;
-e_mode.value=d.mode;
-e_periode.value=d.periode;
-e_nominal.value=d.nominal;
-
-editModal.style.display="flex";
+ let el=document.getElementById("editArea"+i);
+ el.innerHTML=`
+ <input id="edit_barang${i}" value="${d.barang.replace('🎯 ','')}">
+ <input id="edit_target${i}" type="number" value="${d.target}">
+ <select id="edit_mode${i}">
+  <option value="tetap" ${d.mode==="tetap"?"selected":""}>Tetap</option>
+  <option value="fleksibel" ${d.mode==="fleksibel"?"selected":""}>Fleksibel</option>
+ </select>
+ <select id="edit_periode${i}">
+  <option ${d.periode==="Harian"?"selected":""}>Harian</option>
+  <option ${d.periode==="Mingguan"?"selected":""}>Mingguan</option>
+  <option ${d.periode==="Bulanan"?"selected":""}>Bulanan</option>
+ </select>
+ <input id="edit_nominal${i}" value="${d.nominal}">
+ <button onclick="saveEdit(${i})">💾 Simpan</button>
+ <button onclick="tampil()">❌ Batal</button>
+ `;
 }
 
-function closeEdit(){editModal.style.display="none";}
+function saveEdit(i){
+ let d=data[i];
 
-function saveEdit(){
-let d=data[editIndex];
+ d.barang="🎯 "+document.getElementById("edit_barang"+i).value;
+ d.target=+document.getElementById("edit_target"+i).value;
+ d.mode=document.getElementById("edit_mode"+i).value;
+ d.periode=document.getElementById("edit_periode"+i).value;
+ d.nominal=d.mode==="tetap"?+document.getElementById("edit_nominal"+i).value:0;
 
-d.barang=e_barang.value;
-d.target=+e_target.value;
-d.mode=e_mode.value;
-d.periode=e_periode.value;
-d.nominal=e_mode.value==="tetap"?+e_nominal.value:0;
-
-simpan();tampil();closeEdit();
+ simpan();tampil();
 }
 
 /* HAPUS */
@@ -213,6 +215,13 @@ tampil();
 /* NABUNG */
 function nabung(i){
 let d=data[i];
+
+/* 🔥 LIMIT 2x PER HARI */
+let jumlah=hitungNabungHariIni(d);
+if(jumlah>=2){
+ alert("Hari ini sudah limit nabung!");
+ return;
+}
 
 if((d.saldo/d.target)*100>=100){
 alert("Sudah 100%");
@@ -278,6 +287,7 @@ let html="";
 data.forEach((d,i)=>{
 
 let p=(d.saldo/d.target)*100||0;
+let limit=hitungNabungHariIni(d)>=2;
 
 html+=`
 <div class="card">
@@ -291,11 +301,15 @@ Rp ${d.saldo}/${d.target}
 
 <div>${estimasi(d)}</div>
 
+<div id="editArea${i}"></div>
+
 ${d.mode==="fleksibel"
 ? `<input id="flex${i}" placeholder="Nominal">`
 :""}
 
-<button onclick="nabung(${i})">+ Nabung</button>
+<button onclick="nabung(${i})" ${limit?"disabled":""}>+ Nabung</button>
+${limit?`<div style="font-size:12px;color:#f87171">Limit hari ini tercapai</div>`:""}
+
 <button onclick="edit(${i})">✏️ Edit</button>
 <button onclick="hapus(${i})">Hapus</button>
 
@@ -324,10 +338,53 @@ ${h.tanggal} ${h.tipe==="in"?"➕":"➖"} ${h.value} ${h.text?("- "+h.text):""}
 <canvas id="c${i}"></canvas>
 <canvas id="p${i}"></canvas>
 
-</div>`;
+</div>
+`;
 });
 
 document.getElementById("list").innerHTML=html;
+setTimeout(draw,200);
+}
+
+/* CHART */
+function draw(){
+
+data.forEach((d,i)=>{
+
+let ctx=document.getElementById("c"+i);
+let pie=document.getElementById("p"+i);
+if(!ctx||!pie)return;
+
+if(charts[i])charts[i].destroy();
+if(pies[i])pies[i].destroy();
+
+charts[i]=new Chart(ctx,{
+type:"line",
+data:{
+labels:d.chart.map((_,x)=>x),
+datasets:[{data:d.chart,borderWidth:2}]
+}
+});
+
+let kategori={makan:0,transport:0,kebutuhan:0,kemauan:0};
+
+(d.keluar||[]).forEach(h=>{
+kategori[h.kategori]+=h.value;
+});
+
+pies[i]=new Chart(pie,{
+type:"pie",
+data:{
+labels:Object.keys(kategori),
+datasets:[{
+data:Object.values(kategori),
+backgroundColor:["#fb7185","#60a5fa","#34d399","#fbbf24"]
+}]
+}
+});
+
+});
+
 }
 
 tampil();
